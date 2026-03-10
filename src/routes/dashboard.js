@@ -4,12 +4,11 @@ const router = express.Router();
 const { query } = require('../../config/database');
 const systemUtils = require('../utils/system');
 
-// GET /dashboard - Page principale
 router.get('/', async (req, res) => {
   try {
     const [notes, bookmarks, systemInfo] = await Promise.allSettled([
-      query('SELECT * FROM notes WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 5', [req.session.user.id]),
-      query('SELECT * FROM bookmarks WHERE user_id = $1 ORDER BY created_at DESC', [req.session.user.id]),
+      query('SELECT * FROM notes WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 10', [req.session.user.id]),
+      query('SELECT * FROM bookmarks WHERE user_id = $1 ORDER BY category, title', [req.session.user.id]),
       systemUtils.getSystemInfo()
     ]);
 
@@ -27,8 +26,7 @@ router.get('/', async (req, res) => {
       notes: [],
       bookmarks: [],
       system: null,
-      user: req.session.user,
-      error: 'Erreur lors du chargement des données'
+      user: req.session.user
     });
   }
 });
