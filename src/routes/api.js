@@ -8,7 +8,6 @@ const { apiRateLimit } = require('../middleware/rateLimiter');
 
 router.use(apiRateLimit);
 
-// Helper pour la validation
 const validate = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -18,9 +17,7 @@ const validate = (req, res) => {
   return true;
 };
 
-// ============================================
 // SYSTÈME
-// ============================================
 router.get('/system', async (req, res) => {
   try {
     const info = await systemUtils.getSystemInfo();
@@ -30,9 +27,7 @@ router.get('/system', async (req, res) => {
   }
 });
 
-// ============================================
 // NOTES
-// ============================================
 router.get('/notes', async (req, res) => {
   try {
     const result = await query(
@@ -50,7 +45,6 @@ router.post('/notes', [
   body('content').trim().isLength({ max: 10000 }).escape()
 ], async (req, res) => {
   if (!validate(req, res)) return;
-  
   try {
     const { title, content } = req.body;
     const result = await query(
@@ -69,14 +63,12 @@ router.put('/notes/:id', [
   body('content').trim().isLength({ max: 10000 }).escape()
 ], async (req, res) => {
   if (!validate(req, res)) return;
-  
   try {
     const result = await query(
-      `UPDATE notes SET title = $1, content = $2, updated_at = NOW() 
+      `UPDATE notes SET title = $1, content = $2, updated_at = NOW()
        WHERE id = $3 AND user_id = $4 RETURNING *`,
       [req.body.title, req.body.content, req.params.id, req.session.user.id]
     );
-    
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Note introuvable' });
     }
@@ -90,14 +82,11 @@ router.delete('/notes/:id', [
   param('id').isInt({ min: 1 })
 ], async (req, res) => {
   if (!validate(req, res)) return;
-  
   try {
-    // On vérifie que la note appartient bien à l'utilisateur (ownership check)
     const result = await query(
       'DELETE FROM notes WHERE id = $1 AND user_id = $2 RETURNING id',
       [req.params.id, req.session.user.id]
     );
-    
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Note introuvable' });
     }
@@ -107,9 +96,7 @@ router.delete('/notes/:id', [
   }
 });
 
-// ============================================
 // BOOKMARKS
-// ============================================
 router.get('/bookmarks', async (req, res) => {
   try {
     const result = await query(
@@ -128,7 +115,6 @@ router.post('/bookmarks', [
   body('category').trim().isLength({ max: 50 }).escape().optional()
 ], async (req, res) => {
   if (!validate(req, res)) return;
-  
   try {
     const { title, url, category } = req.body;
     const result = await query(
@@ -145,13 +131,11 @@ router.delete('/bookmarks/:id', [
   param('id').isInt({ min: 1 })
 ], async (req, res) => {
   if (!validate(req, res)) return;
-  
   try {
     const result = await query(
       'DELETE FROM bookmarks WHERE id = $1 AND user_id = $2 RETURNING id',
       [req.params.id, req.session.user.id]
     );
-    
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Bookmark introuvable' });
     }
