@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
-  <title><%= title %> — Dashboard Pi</title>
+  <title>Connexion — Dashboard Pi</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -17,7 +17,6 @@
       --accent: #58a6ff;
       --accent-hover: #79c0ff;
       --error: #f85149;
-      --success: #3fb950;
       --warning: #d29922;
     }
 
@@ -32,16 +31,15 @@
       padding: 1rem;
     }
 
-    /* Grille de fond subtile */
     body::before {
       content: '';
       position: fixed;
       inset: 0;
-      background-image: 
+      background-image:
         linear-gradient(var(--border) 1px, transparent 1px),
         linear-gradient(90deg, var(--border) 1px, transparent 1px);
       background-size: 40px 40px;
-      opacity: 0.3;
+      opacity: 0.2;
       pointer-events: none;
     }
 
@@ -64,7 +62,7 @@
     .logo-icon {
       width: 56px;
       height: 56px;
-      background: linear-gradient(135deg, var(--accent), #a371f7);
+      background: linear-gradient(135deg, #58a6ff, #a371f7);
       border-radius: 14px;
       display: flex;
       align-items: center;
@@ -73,17 +71,8 @@
       font-size: 1.5rem;
     }
 
-    .logo h1 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text);
-    }
-
-    .logo p {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      margin-top: 0.25rem;
-    }
+    .logo h1 { font-size: 1.25rem; font-weight: 600; }
+    .logo p { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.25rem; }
 
     .alert {
       padding: 0.75rem 1rem;
@@ -96,20 +85,18 @@
     }
 
     .alert-error {
-      background: rgba(248, 81, 73, 0.1);
-      border: 1px solid rgba(248, 81, 73, 0.3);
+      background: rgba(248,81,73,0.1);
+      border: 1px solid rgba(248,81,73,0.3);
       color: #ff7b72;
     }
 
     .alert-warning {
-      background: rgba(210, 153, 34, 0.1);
-      border: 1px solid rgba(210, 153, 34, 0.3);
+      background: rgba(210,153,34,0.1);
+      border: 1px solid rgba(210,153,34,0.3);
       color: var(--warning);
     }
 
-    .form-group {
-      margin-bottom: 1.25rem;
-    }
+    .form-group { margin-bottom: 1.25rem; }
 
     label {
       display: block;
@@ -133,12 +120,10 @@
 
     input:focus {
       border-color: var(--accent);
-      box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.15);
+      box-shadow: 0 0 0 3px rgba(88,166,255,0.15);
     }
 
-    input::placeholder {
-      color: #484f58;
-    }
+    input::placeholder { color: #484f58; }
 
     button[type="submit"] {
       width: 100%;
@@ -154,18 +139,9 @@
       margin-top: 0.5rem;
     }
 
-    button[type="submit"]:hover:not(:disabled) {
-      background: var(--accent-hover);
-    }
-
-    button[type="submit"]:active {
-      transform: scale(0.99);
-    }
-
-    button[type="submit"]:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
+    button[type="submit"]:hover:not(:disabled) { background: var(--accent-hover); }
+    button[type="submit"]:active { transform: scale(0.99); }
+    button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .footer {
       text-align: center;
@@ -173,9 +149,6 @@
       font-size: 0.8125rem;
       color: #484f58;
     }
-
-    /* Sécurité : cacher les indices de password strength */
-    .loading { display: none; }
   </style>
 </head>
 <body>
@@ -186,52 +159,48 @@
       <p>Connexion requise</p>
     </div>
 
-    <% if (expired) { %>
+    <% if (locals.expired) { %>
     <div class="alert alert-warning">
       <span>⏱️</span>
       <span>Session expirée. Reconnectez-vous.</span>
     </div>
     <% } %>
 
-    <% if (error) { %>
+    <% if (locals.error) { %>
     <div class="alert alert-error">
       <span>⚠️</span>
       <span><%= error %></span>
     </div>
     <% } %>
 
-    <% if (!blocked) { %>
+    <% if (!locals.blocked) { %>
     <form method="POST" action="/login" id="loginForm" autocomplete="on">
       <div class="form-group">
         <label for="username">Identifiant</label>
-        <input 
-          type="text" 
-          id="username" 
-          name="username" 
-          required 
+        <input
+          type="text"
+          id="username"
+          name="username"
+          required
           autocomplete="username"
           autofocus
           maxlength="50"
           placeholder="Votre identifiant"
         >
       </div>
-
       <div class="form-group">
         <label for="password">Mot de passe</label>
-        <input 
-          type="password" 
-          id="password" 
-          name="password" 
+        <input
+          type="password"
+          id="password"
+          name="password"
           required
           autocomplete="current-password"
           maxlength="100"
           placeholder="••••••••"
         >
       </div>
-
-      <button type="submit" id="submitBtn">
-        Se connecter
-      </button>
+      <button type="submit" id="submitBtn">Se connecter</button>
     </form>
     <% } %>
 
@@ -239,7 +208,6 @@
   </div>
 
   <script>
-    // Désactiver le bouton après soumission (évite double-click)
     document.getElementById('loginForm')?.addEventListener('submit', function() {
       const btn = document.getElementById('submitBtn');
       btn.disabled = true;
