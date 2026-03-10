@@ -1,49 +1,104 @@
--- scripts/schema.sql
+// scripts/setup.js
+// Lancer UNE SEULE FOIS : node scripts/setup.js
 
-CREATE TABLE IF NOT EXISTS users (
-    id            SERIAL PRIMARY KEY,
-    username      VARCHAR(50) UNIQUE NOT NULL,
-    password_hash VARCHAR(100) NOT NULL,
-    is_active     BOOLEAN DEFAULT true,
-    created_at    TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    last_login    TIMESTAMP WITH TIME ZONE
-);
+require('dotenv').config();
+const bcrypt = require('bcryptjs');
+const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+const readline = require('readline');
 
-CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+const pool = new Pool({
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD
+});
 
-CREATE TABLE IF NOT EXISTS notes (
-    id         SERIAL PRIMARY KEY,
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title      VARCHAR(200) NOT NULL,
-    content    TEXT DEFAULT '',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+const question = (q) => new Promise(resolve => rl.question(q, resolve));
 
-CREATE INDEX IF NOT EXISTS idx_notes_user_id ON notes(user_id);
+const setup = async () => {
+  console.log('\n🔧 Setup Dashboard Pi\n================================\n');
 
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+  try {
+    await pool.query('SELECT 1');
+    console.log('✅ Connexion PostgreSQL OK\n');
+  } catch (err) {
+    console.error('❌ Impossible de se connecter à PostgreSQL');
+    console.error('   Vérifiez votre .env — Erreur:', err.message);
+    process.exit(1);
+  }
 
-DROP TRIGGER IF EXISTS notes_updated_at ON notes;
-CREATE TRIGGER notes_updated_at
-    BEFORE UPDATE ON notes
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at();
+  try {
+    const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
+    await pool.query(schema);
+    console.log('✅ Tables créées\n');
+  } catch (err) {
+    console.error('❌ Erreur création tables:', err.message);
+    process.exit(1);
+  }
 
-CREATE TABLE IF NOT EXISTS bookmarks (
-    id         SERIAL PRIMARY KEY,
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    title      VARCHAR(200) NOT NULL,
-    url        TEXT NOT NULL,
-    category   VARCHAR(50) DEFAULT 'Général',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+  const existing = await pool.query("SELECT COUNT(*) FROM users");
+  if (parseInt(existing.rows[0].count) > 0) {
+    console.log('ℹ️  Un utilisateur existe déjà.');
+    const reset = await question('Réinitialiser le mot de passe ? (o/N) : ');
+    if (reset.toLowerCase() !== 'o') {
+      console.log('\n✅ Setup terminé.\n');
+      rl.close();
+      pool.end();
+      return;
+    }
+  }
 
-CREATE INDEX IF NOT EXISTS idx_bookmarks_user_id ON bookmarks(user_id);
-CREATE INDEX IF NOT EXISTS idx_bookmarks_category ON bookmarks(category);
+  console.log('📝 Création du compte administrateur\n');
+  const username = await question('Identifiant (défaut: admin) : ') || 'admin';
+
+  let password = '';
+  while (password.length < 8) {
+    password = await question('Mot de passe (min 8 caractères) : ');
+    if (password.length < 8) console.log('⚠️  Minimum 8 caractères.');
+  }
+
+  try {
+    const hash = await bcrypt.hash(password, 12);
+    await pool.query(`
+      INSERT INTO users (username, password_hash, is_active)
+      VALUES ($1, $2, true)
+      ON CONFLICT (username) DO UPDATE SET password_hash = $2, is_active = true
+    `, [username.toLowerCase(), hash]);
+
+    console.log(`\n✅ Compte créé : ${username}\n`);
+  } catch (err) {
+    console.error('❌ Erreur:', err.message);
+    process.exit(1);
+  }
+
+  const addSamples = await question('Ajouter des bookmarks de démo ? (o/N) : ');
+  if (addSamples.toLowerCase() === 'o') {
+    const user = await pool.query("SELECT id FROM users WHERE username = $1", [username.toLowerCase()]);
+    const userId = user.rows[0].id;
+    const samples = [
+      [userId, 'GitHub', 'https://github.com', 'Dev'],
+      [userId, 'MDN Web Docs', 'https://developer.mozilla.org', 'Dev'],
+      [userId, 'Node.js Docs', 'https://nodejs.org/docs', 'Dev']
+    ];
+    for (const [uid, title, url, cat] of samples) {
+      await pool.query(
+        'INSERT INTO bookmarks (user_id, title, url, category) VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING',
+        [uid, title, url, cat]
+      ).catch(() => {});
+    }
+    console.log('✅ Bookmarks de démo ajoutés\n');
+  }
+
+  console.log('🎉 Setup terminé ! Lancez : npm start\n');
+  rl.close();
+  pool.end();
+};
+
+setup().catch(err => {
+  console.error('Erreur setup:', err);
+  process.exit(1);
+});
