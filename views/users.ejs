@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Utilisateurs — Dashboard Pi</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --surface2: #1c2128; --border: #30363d;
+      --text: #e6edf3; --muted: #8b949e;
+      --accent: #58a6ff; --success: #3fb950; --danger: #f85149; --warning: #d29922;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); }
+    .layout { display: flex; min-height: 100vh; }
+    .sidebar { width: 220px; background: var(--surface); border-right: 1px solid var(--border); padding: 1.5rem 1rem; flex-shrink: 0; display: flex; flex-direction: column; }
+    .sidebar-logo { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2rem; }
+    .sidebar-logo .icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #a371f7); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .sidebar-logo span { font-weight: 700; }
+    .nav-item { display: flex; align-items: center; gap: 0.625rem; padding: 0.5rem 0.75rem; border-radius: 6px; color: var(--muted); font-size: 0.875rem; text-decoration: none; transition: all 0.1s; margin-bottom: 0.25rem; cursor: pointer; background: none; border: none; width: 100%; }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active { background: rgba(88,166,255,0.1); color: var(--accent); }
+    .nav-spacer { flex: 1; }
+    .main { flex: 1; padding: 2rem; overflow-x: auto; }
+    h1 { font-size: 1.25rem; font-weight: 600; margin-bottom: 2rem; }
+    h2 { font-size: 0.9375rem; font-weight: 600; margin-bottom: 1.25rem; }
+    .alert { padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; margin-bottom: 1.5rem; }
+    .alert-success { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); color: var(--success); }
+    .alert-error { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); color: #ff7b72; }
+
+    /* INVITE CARD */
+    .invite-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; margin-bottom: 2rem; max-width: 560px; }
+    .form-row { display: grid; grid-template-columns: 1fr auto; gap: 0.75rem; align-items: end; margin-bottom: 0.75rem; }
+    .form-group { display: flex; flex-direction: column; gap: 0.375rem; }
+    .form-label { font-size: 0.8125rem; color: var(--muted); }
+    .form-input { padding: 0.5rem 0.75rem; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.875rem; outline: none; transition: border-color 0.15s; }
+    .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,166,255,0.1); }
+    .checkbox-row { display: flex; align-items: center; gap: 0.5rem; }
+    .checkbox-row label { font-size: 0.8125rem; color: var(--muted); cursor: pointer; }
+
+    /* TABLES */
+    .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; }
+    .table-header { padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); font-size: 0.875rem; font-weight: 600; display: flex; align-items: center; justify-content: space-between; }
+    .table-count { font-size: 0.75rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 0.125rem 0.625rem; color: var(--muted); }
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 0.625rem 1rem; text-align: left; font-size: 0.6875rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 0.75rem 1rem; font-size: 0.8125rem; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+    .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.125rem 0.5rem; border-radius: 20px; font-size: 0.6875rem; font-weight: 600; white-space: nowrap; }
+    .badge-admin { background: rgba(163,113,247,0.12); color: #a371f7; border: 1px solid rgba(163,113,247,0.3); }
+    .badge-active { background: rgba(63,185,80,0.1); color: var(--success); border: 1px solid rgba(63,185,80,0.3); }
+    .badge-inactive { background: rgba(248,81,73,0.1); color: var(--danger); border: 1px solid rgba(248,81,73,0.3); }
+    .badge-2fa { background: rgba(88,166,255,0.1); color: var(--accent); border: 1px solid rgba(88,166,255,0.2); }
+    .badge-pending { background: rgba(210,153,34,0.1); color: var(--warning); border: 1px solid rgba(210,153,34,0.3); }
+    .actions { display: flex; gap: 0.375rem; flex-wrap: wrap; }
+    .btn { padding: 0.25rem 0.625rem; border-radius: 5px; font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .btn-send { background: var(--accent); color: #0d1117; border: none; padding: 0.5rem 1rem; font-size: 0.8125rem; }
+    .btn-send:hover { background: #79c0ff; }
+    .btn-ghost { background: none; border: 1px solid var(--border); color: var(--muted); }
+    .btn-ghost:hover { border-color: var(--text); color: var(--text); }
+    .btn-warning { background: none; border: 1px solid transparent; color: var(--muted); }
+    .btn-warning:hover { border-color: var(--warning); color: var(--warning); }
+    .btn-danger-sm { background: none; border: 1px solid transparent; color: var(--muted); }
+    .btn-danger-sm:hover { border-color: var(--danger); color: var(--danger); }
+    .empty { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.875rem; }
+
+    /* MODAL */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 380px; }
+    .modal h3 { font-size: 1rem; font-weight: 600; margin-bottom: 0.5rem; }
+    .modal p { font-size: 0.875rem; color: var(--muted); margin-bottom: 1.25rem; }
+    .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1.25rem; }
+    .btn-modal-cancel { background: none; border: 1px solid var(--border); color: var(--muted); padding: 0.5rem 1rem; font-size: 0.875rem; border-radius: 6px; cursor: pointer; }
+    .btn-modal-confirm { background: var(--accent); color: #0d1117; border: none; padding: 0.5rem 1rem; font-size: 0.875rem; font-weight: 600; border-radius: 6px; cursor: pointer; }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon">🖥️</div>
+      <span>Dashboard Pi</span>
+    </div>
+    <a class="nav-item" href="/dashboard">📊 Dashboard</a>
+    <a class="nav-item" href="/admin/2fa">🔐 Double auth</a>
+    <a class="nav-item active" href="/admin/users">👥 Utilisateurs</a>
+    <div class="nav-spacer"></div>
+    <form method="POST" action="/logout">
+      <button type="submit" class="nav-item">🚪 Déconnexion</button>
+    </form>
+  </aside>
+
+  <main class="main">
+    <h1>Gestion des utilisateurs</h1>
+
+    <% if (locals.success === 'invited') { %><div class="alert alert-success">✅ Invitation envoyée par email.</div><% } %>
+    <% if (locals.success === 'password_reset') { %><div class="alert alert-success">✅ Mot de passe réinitialisé.</div><% } %>
+    <% if (locals.error) { %><div class="alert alert-error">⚠️ <%= error %></div><% } %>
+
+    <!-- ENVOYER UNE INVITATION -->
+    <div class="invite-card">
+      <h2>✉️ Inviter un utilisateur</h2>
+      <form method="POST" action="/admin/users/invite">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="invite-email">Adresse email</label>
+            <input type="email" id="invite-email" name="email" class="form-input" required placeholder="prenom@exemple.fr">
+          </div>
+          <button type="submit" class="btn btn-send">Envoyer →</button>
+        </div>
+        <div class="checkbox-row">
+          <input type="checkbox" id="invite-admin" name="is_admin">
+          <label for="invite-admin">Accorder les droits administrateur</label>
+        </div>
+      </form>
+      <p style="font-size:0.75rem; color:var(--muted); margin-top:0.75rem;">
+        La personne recevra un lien valable <%= parseInt(process.env.INVITE_TTL_HOURS) || 48 %>h pour créer son compte.
+      </p>
+    </div>
+
+    <!-- INVITATIONS EN ATTENTE -->
+    <% if (locals.pendingInvites && pendingInvites.length > 0) { %>
+    <div class="table-card">
+      <div class="table-header">
+        <span>Invitations en attente</span>
+        <span class="table-count"><%= pendingInvites.length %></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Email</th>
+            <th>Droits</th>
+            <th>Expire le</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% pendingInvites.forEach(function(inv) { %>
+          <tr>
+            <td><%= inv.email %></td>
+            <td><% if (inv.is_admin) { %><span class="badge badge-admin">Admin</span><% } else { %><span style="color:var(--muted)">Utilisateur</span><% } %></td>
+            <td style="color:var(--muted)"><%= new Date(inv.expires_at).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) %></td>
+            <td>
+              <form method="POST" action="/admin/users/invite/<%= inv.id %>/cancel" onsubmit="return confirm('Annuler cette invitation ?')">
+                <button type="submit" class="btn btn-danger-sm">Annuler</button>
+              </form>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+    <!-- LISTE DES UTILISATEURS -->
+    <div class="table-card">
+      <div class="table-header">
+        <span>Utilisateurs</span>
+        <span class="table-count"><%= users.length %></span>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Identifiant</th>
+            <th>Email</th>
+            <th>Statut</th>
+            <th>2FA</th>
+            <th>Dernière connexion</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% users.forEach(function(u) { %>
+          <tr>
+            <td>
+              <strong><%= u.username %></strong>
+              <% if (u.is_admin) { %> <span class="badge badge-admin">Admin</span><% } %>
+              <% if (u.id === locals.user?.id) { %><span style="font-size:0.7rem;color:var(--muted);margin-left:0.25rem">(vous)</span><% } %>
+            </td>
+            <td style="color:var(--muted)"><%= u.email %></td>
+            <td>
+              <% if (u.is_active) { %><span class="badge badge-active">● Actif</span>
+              <% } else { %><span class="badge badge-inactive">● Inactif</span><% } %>
+            </td>
+            <td>
+              <% if (u.email_2fa_enabled) { %><span class="badge badge-2fa">📧 Email</span>
+              <% } else { %><span style="color:var(--muted)">—</span><% } %>
+            </td>
+            <td style="color:var(--muted)">
+              <%= u.last_login ? new Date(u.last_login).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}) : 'Jamais' %>
+            </td>
+            <td>
+              <% if (u.id !== locals.user?.id) { %>
+              <div class="actions">
+                <form method="POST" action="/admin/users/<%= u.id %>/toggle">
+                  <button type="submit" class="btn btn-ghost"><%= u.is_active ? 'Désactiver' : 'Activer' %></button>
+                </form>
+                <button class="btn btn-warning" onclick="openReset(<%= u.id %>, '<%= u.username %>')">Réinit. mdp</button>
+                <form method="POST" action="/admin/users/<%= u.id %>/delete" onsubmit="return confirm('Supprimer définitivement <%= u.username %> et toutes ses données ?')">
+                  <button type="submit" class="btn btn-danger-sm">Supprimer</button>
+                </form>
+              </div>
+              <% } else { %>
+              <span style="color:var(--muted)">—</span>
+              <% } %>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+      <% if (users.length === 0) { %><div class="empty">Aucun utilisateur</div><% } %>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL RESET MOT DE PASSE -->
+<div class="modal-overlay" id="resetModal">
+  <div class="modal">
+    <h3>Réinitialiser le mot de passe</h3>
+    <p id="resetModalDesc">Nouveau mot de passe pour <strong id="resetModalUser"></strong></p>
+    <form method="POST" id="resetForm">
+      <div class="form-group" style="margin-bottom:1rem">
+        <label class="form-label">Nouveau mot de passe (min 12 car.)</label>
+        <input type="password" name="new_password" class="form-input" required minlength="12" placeholder="••••••••••••">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-cancel" onclick="closeReset()">Annuler</button>
+        <button type="submit" class="btn-modal-confirm">Réinitialiser</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function openReset(id, username) {
+    document.getElementById('resetModalUser').textContent = username;
+    document.getElementById('resetForm').action = '/admin/users/' + id + '/reset-password';
+    document.getElementById('resetModal').classList.add('open');
+  }
+  function closeReset() { document.getElementById('resetModal').classList.remove('open'); }
+  document.getElementById('resetModal').addEventListener('click', e => { if (e.target === e.currentTarget) closeReset(); });
+</script>
+</body>
+</html>
