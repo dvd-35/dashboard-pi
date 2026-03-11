@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Créer votre compte — Dashboard Pi</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0d1117; --surface: #161b22; --border: #30363d;
+      --text: #e6edf3; --muted: #8b949e; --accent: #58a6ff; --accent2: #a371f7;
+      --danger: #f85149; --success: #3fb950;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0;
+      background-image: linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 40px 40px; opacity: 0.2; pointer-events: none;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 2.5rem; width: 100%; max-width: 420px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+    }
+    .logo { text-align: center; margin-bottom: 2rem; }
+    .logo-icon {
+      width: 56px; height: 56px; margin: 0 auto 1rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+    }
+    .logo h1 { font-size: 1.25rem; font-weight: 600; }
+    .logo p { font-size: 0.875rem; color: var(--muted); margin-top: 0.25rem; }
+    .email-tag {
+      display: inline-block; background: rgba(63,185,80,0.1);
+      border: 1px solid rgba(63,185,80,0.3); border-radius: 6px;
+      padding: 0.25rem 0.75rem; font-size: 0.8125rem; color: var(--success);
+      margin-top: 0.5rem;
+    }
+    .alert {
+      padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.875rem; margin-bottom: 1.5rem;
+    }
+    .alert-error { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); color: #ff7b72; }
+    .alert-invalid { text-align: center; color: var(--muted); }
+    .form-group { margin-bottom: 1.25rem; }
+    label { display: block; font-size: 0.875rem; font-weight: 500; color: var(--muted); margin-bottom: 0.5rem; }
+    input {
+      width: 100%; padding: 0.625rem 0.875rem;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.9375rem;
+      outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,166,255,0.15); }
+    input::placeholder { color: #484f58; }
+    .password-rules { font-size: 0.75rem; color: var(--muted); margin-top: 0.375rem; }
+    button[type="submit"] {
+      width: 100%; padding: 0.75rem; background: var(--accent); color: #0d1117;
+      border: none; border-radius: 8px; font-size: 0.9375rem; font-weight: 600;
+      cursor: pointer; transition: background 0.15s; margin-top: 0.5rem;
+    }
+    button[type="submit"]:hover:not(:disabled) { background: #79c0ff; }
+    button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+    .footer { text-align: center; margin-top: 1.5rem; font-size: 0.8125rem; color: #484f58; }
+  </style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">
+    <div class="logo-icon">✉️</div>
+    <h1>Dashboard Pi</h1>
+    <% if (locals.token) { %>
+      <p>Créer votre compte</p>
+      <% if (locals.email) { %><div class="email-tag">✓ <%= email %></div><% } %>
+    <% } else { %>
+      <p>Invitation invalide</p>
+    <% } %>
+  </div>
+
+  <% if (locals.error) { %>
+  <div class="alert alert-error">⚠️ <%= error %></div>
+  <% } %>
+
+  <% if (locals.token) { %>
+  <form method="POST" action="/register/<%= token %>" id="registerForm" autocomplete="on">
+    <input type="hidden" name="email" value="<%= locals.email || '' %>">
+    <div class="form-group">
+      <label for="username">Choisissez un identifiant</label>
+      <input type="text" id="username" name="username" required autofocus
+             autocomplete="username" minlength="3" maxlength="50"
+             pattern="[a-zA-Z0-9]+" placeholder="ex: vladimir"
+             title="Lettres et chiffres uniquement">
+    </div>
+    <div class="form-group">
+      <label for="password">Mot de passe</label>
+      <input type="password" id="password" name="password" required
+             autocomplete="new-password" minlength="12" maxlength="100" placeholder="••••••••••••">
+      <p class="password-rules">Minimum 12 caractères</p>
+    </div>
+    <div class="form-group">
+      <label for="password_confirm">Confirmer le mot de passe</label>
+      <input type="password" id="password_confirm" name="password_confirm" required
+             autocomplete="new-password" minlength="12" maxlength="100" placeholder="••••••••••••">
+    </div>
+    <button type="submit" id="submitBtn">Créer mon compte</button>
+  </form>
+  <% } else { %>
+  <div class="alert-invalid">
+    <p>Ce lien d'invitation est <strong>invalide ou expiré</strong>.</p>
+    <p style="margin-top:0.5rem;">Demandez une nouvelle invitation à l'administrateur.</p>
+  </div>
+  <% } %>
+
+  <div class="footer">Dashboard Pi — Accès sur invitation</div>
+</div>
+
+<script>
+  document.getElementById('registerForm')?.addEventListener('submit', function(e) {
+    const p1 = document.getElementById('password').value;
+    const p2 = document.getElementById('password_confirm').value;
+    if (p1 !== p2) {
+      e.preventDefault();
+      alert('Les mots de passe ne correspondent pas.');
+      return;
+    }
+    const btn = document.getElementById('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Création...';
+  });
+</script>
+</body>
+</html>
